@@ -66,7 +66,7 @@ public class XAController {
 		return message;
 	}
 	
-	@PostMapping
+	@PostMapping(path="/async")
 	@Transactional
 	public void async(@RequestBody Map<String, String> map, @RequestParam Optional<Boolean> rollback) throws Exception {
 		String name = map.get("name");
