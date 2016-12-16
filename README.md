@@ -17,8 +17,10 @@ Example -
    management becomes painful because all are lying under different JVMs/servers. Also any faiulre happened in any
    microservice should rollback the inserts/updates/deletes done by other microservices taking part in that particular
    transaction.
+   
+4. There can be two types of transactions Synchronous And Asynchrnous. Synchronous are the ones understandable where output        becomes input of the next participant and Asynchronous where transactions doesnt needs any interaction with current ongoing    transaction but then if initiator of asynchronous transaction fails then we need to rollback/stop the initiated transaction    as well.
 
-4. This application will be able to get you through the basics of the transaction processing between two microservices which 
+5. This application will be able to get you through the basics of the transaction processing between two microservices which 
    can be applied to as many microservices you have. 
 
 Technology Used 
