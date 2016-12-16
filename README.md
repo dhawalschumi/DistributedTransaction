@@ -29,3 +29,4 @@ Technology Used
 5. XA Transactions using 2 Phase commit. 
 6. JTA Transaction Management
 7. Java 8
+8. Active MQ
