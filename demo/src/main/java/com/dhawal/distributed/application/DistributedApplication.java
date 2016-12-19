@@ -17,7 +17,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @EnableJms
 @EnableTransactionManagement
 @Configuration
-public class DistributedApplication {
+public class DistributedApplication {  
 
 	public static final String PRODUCER_QUEUE = "producer";
 	

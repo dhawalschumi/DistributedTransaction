@@ -22,6 +22,7 @@ import org.springframework.jms.core.JmsTemplate;
 import org.springframework.jms.core.MessagePostProcessor;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -40,10 +41,10 @@ public class XAController {
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
-	
+
 	@Autowired
 	private JmsTemplate jmsTemplate;
-	
+
 	@Autowired
 	@Qualifier("recieverJmsTemplate")
 	private JmsTemplate recieverJmsTemplate;
@@ -56,22 +57,20 @@ public class XAController {
 
 	@PostMapping
 	@Transactional
-	public @ResponseBody String sync(@RequestBody Map<String, String> map, @RequestParam Optional<Boolean> rollback) throws Exception {
+	public @ResponseBody String sync(@RequestBody Map<String, String> map, @RequestParam Optional<Boolean> rollback)
+			throws Exception {
 		String name = map.get("name");
 		this.jdbcTemplate.update("insert into distributed.STUDENT (NAME,AGE) values (?,?)", name, 47);
-		String message = sendRecieveMessage();		
-		if (rollback.orElse(false)) {
-			throw new RuntimeException("Cannot process request");
-		}
+		String message = sendRecieveMessage();
 		return message;
 	}
-	
-	@PostMapping(path="/async")
-	@Transactional
+
+	@PostMapping(path = "/async")
+	@Transactional(rollbackFor=Exception.class)
 	public void async(@RequestBody Map<String, String> map, @RequestParam Optional<Boolean> rollback) throws Exception {
 		String name = map.get("name");
 		this.jdbcTemplate.update("insert into distributed.STUDENT (NAME,AGE) values (?,?)", name, 47);
-		this.jmsTemplate.convertAndSend(DistributedApplication.PRODUCER_QUEUE, "Hello Async" + "!");		
+		this.jmsTemplate.convertAndSend(DistributedApplication.PRODUCER_QUEUE, "Hello Async" + "!");
 		if (rollback.orElse(false)) {
 			throw new RuntimeException("Cannot process request");
 		}
@@ -87,7 +86,7 @@ public class XAController {
 		});
 	}
 
-	@Transactional(propagation=Propagation.REQUIRES_NEW)
+	@Transactional(propagation = Propagation.REQUIRES_NEW,rollbackFor=Exception.class)
 	public String sendRecieveMessage() throws Exception {
 		String jmsMessageId = "JMSCorrelationID='" + UUID.randomUUID().toString() + "'";
 		jmsTemplate.convertAndSend(DistributedApplication.PRODUCER_QUEUE, "Hello " + "!", new MessagePostProcessor() {
@@ -98,19 +97,23 @@ public class XAController {
 			}
 		});
 		String message = recieveMessage(jmsMessageId);
-		System.out.println(message);
+		if (StringUtils.isEmpty(message)) {
+			throw new RuntimeException("There is failure in transaction");
+		}
 		return message;
 	}
-	
-	@Transactional(propagation=Propagation.REQUIRES_NEW)
+
+	@Transactional(propagation = Propagation.REQUIRES_NEW,rollbackFor=Exception.class)
 	public String recieveMessage(String jmsMessageId) throws JMSException {
 		String response = null;
 		Message message = jmsTemplate.receive(DistributedApplication.CONSUMER_QUEUE);
-		if(message instanceof TextMessage){
-			TextMessage textMessage = (TextMessage)message;
-			response = textMessage.getText();
+		if (message instanceof TextMessage) {
+			TextMessage textMessage = (TextMessage) message;
+			boolean success = textMessage.getBooleanProperty("success");
+			if (success) {
+				response = textMessage.getText();
+			}
 		}
-		System.out.println("Message recieved = "+response);
 		return response;
 	}
 }
